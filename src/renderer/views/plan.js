@@ -77,6 +77,7 @@
       if (profile.restDays.length >= 7) errs.push('쉬는 요일을 모두 선택할 수는 없습니다');
       const box = root.querySelector('#form-err');
       if (errs.length) { box.hidden = false; box.textContent = errs.join(' · '); return; }
+      profile.t = App.now();
       App.state.profile = profile;
       App.save();
       App.toast('학습 계획이 만들어졌어요');

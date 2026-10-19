@@ -29,11 +29,11 @@
       const lvAtts = atts.filter((a) => a.level === lv);
       const acc = quiz.sectionAccuracy(atts, lv);
       const totalCorrect = lvAtts.filter((a) => a.correct).length;
-      const activeDays = Object.keys(App.state.activity).filter((d) => (App.state.activity[d].q || 0) + (App.state.activity[d].cards || 0) > 0);
+      const activeDays = App.activeDays();
       const days = [];
       for (let i = 13; i >= 0; i--) {
         const iso = dates.addDays(App.today, -i);
-        const a = App.state.activity[iso] || {};
+        const a = App.activityOn(iso);
         days.push({ iso, q: a.q || 0, cards: a.cards || 0 });
       }
       const mocks = App.state.mocks.filter((m) => m.level === lv).slice(-10).reverse();
@@ -68,8 +68,8 @@
               <span class="pct">${a ? `${App.pct(a.correct / a.total)}` : '—'}</span></div><div class="small muted" style="margin:-4px 0 4px 90px">${a ? `${a.correct}/${a.total}문항` : '아직 기록 없음'}</div>`; }).join('')}</div>
         </div>
         <div class="grid g2">
-          <div class="card"><h2>모의고사 기록</h2>${mocks.length ? `<table><thead><tr><th>날짜</th><th class="num">정답</th><th class="num">예상 점수</th><th>판정</th></tr></thead><tbody>
-            ${mocks.map((m) => `<tr><td>${App.esc(m.at)}</td><td class="num">${m.correct}/${m.total}</td><td class="num">${m.score}</td><td style="color:${m.passed ? 'var(--ok)' : 'var(--bad)'}">${m.passed ? '합격권' : '불합격권'}</td></tr>`).join('')}</tbody></table>`
+          <div class="card"><h2>모의고사 기록</h2>${mocks.length ? `<div class="table-wrap"><table><thead><tr><th>날짜</th><th class="num">정답</th><th class="num">예상 점수</th><th>판정</th></tr></thead><tbody>
+            ${mocks.map((m) => `<tr><td>${App.esc(m.at)}</td><td class="num">${m.correct}/${m.total}</td><td class="num">${m.score}</td><td style="color:${m.passed ? 'var(--ok)' : 'var(--bad)'}">${m.passed ? '합격권' : '불합격권'}</td></tr>`).join('')}</tbody></table></div>`
             : '<p class="muted">아직 모의고사 기록이 없습니다.</p>'}</div>
           <div class="card"><h2>보완이 필요한 유형</h2>${weakTags.length ? weakTags.map(([t, s]) => `<div class="sec-row"><span class="small">${App.esc(t)}</span>
               <div class="bar"><i style="width:${App.pct(s.c / s.t)}"></i></div><span class="pct">${s.c}/${s.t}</span></div>`).join('')

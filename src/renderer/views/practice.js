@@ -105,7 +105,7 @@
         ${reveal ? `<div class="explain ${ans === q.answer ? 'ok' : 'bad'}"><h3>${ans === q.answer ? '정답입니다' : `오답 — 정답은 ${q.answer + 1}번`}</h3><p>${App.esc(q.explanation)}</p></div>` : ''}
       </div>
       <div class="row between" style="margin-top:14px">
-        <span class="small muted"><span class="kbd">1</span>~<span class="kbd">4</span> 선택 · <span class="kbd">Enter</span> 다음</span>
+        <span class="small muted kbd-hint"><span class="kbd">1</span>~<span class="kbd">4</span> 선택 · <span class="kbd">Enter</span> 다음</span>
         <div class="row">
           ${isMock ? `<button class="btn" id="prev" ${S.i === 0 ? 'disabled' : ''}>이전</button>` : ''}
           ${isMock ? (S.i < S.questions.length - 1 ? '<button class="btn" id="next">다음</button>' : '') + '<button class="btn primary" id="submit">제출</button>'
@@ -183,7 +183,7 @@
     S.finished = true;
     const g = quiz.grade(S.questions, S.answers);
     const est = S.mode === 'mock' ? quiz.estimateScore(S.level, g.bySection) : null;
-    if (est) App.state.mocks.push({ level: S.level, at: App.today, correct: g.correct, total: g.total, score: est.total, passed: est.passed });
+    if (est) App.state.mocks.push({ id: App.newId('m'), t: App.now(), level: S.level, at: App.today, correct: g.correct, total: g.total, score: est.total, passed: est.passed });
     if (S.taskId) App.completeTask(S.taskId, S.taskDate);
     App.save();
     App.renderNav();
@@ -201,8 +201,8 @@
       </div>
       <div style="margin-top:12px">${Object.entries(g.bySection).map(([s, v]) => `<div class="sec-row"><span>${App.SECTION_NAMES[s]}</span>
         <div class="bar"><i style="width:${App.pct(v.correct / v.total)};background:var(--s-${s})"></i></div><span class="pct">${v.correct}/${v.total}</span></div>`).join('')}</div>
-      ${est ? `<table style="margin-top:10px"><thead><tr><th>득점 구분</th><th class="num">예상</th><th class="num">기준점</th></tr></thead><tbody>
-        ${est.parts.map((p) => `<tr><td>${p.name}</td><td class="num">${p.score}/${p.max}</td><td class="num" style="color:${p.ok ? 'var(--ok)' : 'var(--bad)'}">${p.min} ${p.ok ? '통과' : '미달'}</td></tr>`).join('')}</tbody></table>
+      ${est ? `<div class="table-wrap"><table style="margin-top:10px"><thead><tr><th>득점 구분</th><th class="num">예상</th><th class="num">기준점</th></tr></thead><tbody>
+        ${est.parts.map((p) => `<tr><td>${p.name}</td><td class="num">${p.score}/${p.max}</td><td class="num" style="color:${p.ok ? 'var(--ok)' : 'var(--bad)'}">${p.min} ${p.ok ? '통과' : '미달'}</td></tr>`).join('')}</tbody></table></div>
         <p class="small muted" style="margin-top:6px">실제 JLPT는 등화(척도) 점수라 이 환산값과 다를 수 있습니다.</p>` : ''}
       </div>
       <div class="row" style="justify-content:flex-end">

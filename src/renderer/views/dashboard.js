@@ -51,12 +51,12 @@
       const plan = planner.buildPhases(p);
       const ph = planner.phaseOf(plan, App.today);
       const prog = planner.progress(p, App.state.completions, App.today);
-      const activeDays = Object.keys(App.state.activity).filter((d) => (App.state.activity[d].q || 0) + (App.state.activity[d].cards || 0) > 0);
+      const activeDays = App.activeDays();
       const streak = quiz.streak(activeDays, App.today);
       const acc = quiz.sectionAccuracy(App.state.attempts, p.level);
       const cards = App.dueCardCount(p.level);
       const wrongN = App.openWrongCount();
-      const upcoming = App.state.events.filter((e) => e.date >= App.today).sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 4);
+      const upcoming = App.liveEvents().filter((e) => e.date >= App.today).sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 4);
 
       root.appendChild(App.el(`<div class="page">
         <div class="page-head">

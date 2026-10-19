@@ -43,7 +43,7 @@
       root.querySelectorAll('.seg[data-k]').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => nav({ [seg.dataset.k]: b.dataset.v }))));
       root.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => {
         const w = App.state.wrong[b.dataset.toggle];
-        w.resolved = !w.resolved; w.streak = 0;
+        w.resolved = !w.resolved; w.streak = 0; w.t = App.now();
         App.save(); nav({});
       }));
       const retry = root.querySelector('#retry');

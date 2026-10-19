@@ -18,10 +18,15 @@
     ['dashboard', '대시보드'], ['plan', '학습 계획'], ['schedule', '일정'], ['guide', '학습 가이드'],
     ['practice', '연습문제'], ['vocab', '단어장'], ['wrong', '오답노트'], ['stats', '통계'], ['settings', '설정'],
   ];
+  ICONS.more = '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>';
+  const TABS = [['dashboard', '홈'], ['schedule', '일정'], ['practice', '문제'], ['vocab', '단어']];
   const SECTION_NAMES = planner.SECTION_NAMES;
   const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
 
   const App = {
+    version: '1.1.0',
+    NAV,
+    ICONS,
     views: {},
     state: null,
     content: {},
@@ -78,12 +83,22 @@
   App.save = function () {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => window.api.saveState(App.state), 150);
+    if (App.sync) App.sync.schedule();
   };
   App.flush = function () {
     clearTimeout(saveTimer);
     return window.api.saveState(App.state);
   };
   window.addEventListener('beforeunload', () => { window.api.saveState(App.state); });
+  // 휴대폰은 앱 전환 시 언제든 종료될 수 있으므로 화면을 벗어나면 바로 저장
+  document.addEventListener('visibilitychange', () => {
+    if (!App.state) return;
+    if (document.visibilityState === 'hidden') App.flush();
+    else if (!App.fixedToday) {
+      const t = App.dates.toISO(new Date());
+      if (t !== App.today) { App.today = t; if (!document.querySelector('.quiz, .flash')) App.render(); } // 자정 넘어 다시 열면 오늘 날짜 갱신
+    }
+  });
 
   // ---------- domain helpers ----------
   App.level = function () {
@@ -99,42 +114,48 @@
     return null;
   };
 
+  // 동기화용 타임스탬프: 같은 기기에서 단조 증가 보장
+  let lastNow = 0;
+  App.now = function () { lastNow = Math.max(Date.now(), lastNow + 1); return lastNow; };
+  App.newId = (p) => `${p}-${App.state.local.deviceId}-${App.now().toString(36)}`;
+  App.activityOn = (d) => JLPT.state.activityOn(App.state, d);
+  App.activeDays = () => JLPT.state.activeDays(App.state);
+
   App.bumpActivity = function (kind, n = 1) {
-    const a = (App.state.activity[App.today] = App.state.activity[App.today] || { q: 0, cards: 0 });
+    const dev = App.state.local.deviceId;
+    const per = (App.state.activity[App.today] = App.state.activity[App.today] || {});
+    const a = (per[dev] = per[dev] || { q: 0, cards: 0, t: 0 });
     a[kind] = (a[kind] || 0) + n;
+    a.t = App.now();
   };
 
   App.recordAttempt = function (q, level, chosen) {
     const correct = chosen === q.answer;
-    App.state.attempts.push({ qid: q.id, level, section: q.section, chosen, correct, at: App.today });
+    App.state.attempts.push({ id: App.newId('a'), qid: q.id, level, section: q.section, chosen, correct, at: App.today, t: App.now() });
     if (App.state.attempts.length > 20000) App.state.attempts.splice(0, App.state.attempts.length - 20000);
     const w = App.state.wrong[q.id];
     if (!correct) {
-      App.state.wrong[q.id] = { level, count: (w ? w.count : 0) + 1, lastAt: App.today, resolved: false, lastChoice: chosen };
+      App.state.wrong[q.id] = { level, count: (w ? w.count : 0) + 1, lastAt: App.today, resolved: false, lastChoice: chosen, streak: 0, t: App.now() };
     } else if (w && !w.resolved) {
       w.streak = (w.streak || 0) + 1;
       if (w.streak >= 2) w.resolved = true; // 연속 2번 맞히면 자동 해결
+      w.t = App.now();
     }
     App.bumpActivity('q');
     App.save();
     return correct;
   };
 
-  App.completeTask = function (taskId, date) {
+  App.setTask = function (taskId, date, on) {
     if (!taskId) return;
-    const d = date || App.today;
-    const list = (App.state.completions[d] = App.state.completions[d] || []);
-    if (!list.includes(taskId)) list.push(taskId);
+    App.state.compMeta[`${date}|${taskId}`] = { on: !!on, t: App.now() };
+    App.state.completions = JLPT.state.deriveCompletions(App.state.compMeta);
     App.save();
   };
-  App.toggleTask = function (taskId, date, on) {
-    const list = (App.state.completions[date] = App.state.completions[date] || []);
-    const i = list.indexOf(taskId);
-    if (on && i < 0) list.push(taskId);
-    if (!on && i >= 0) list.splice(i, 1);
-    App.save();
-  };
+  App.completeTask = (taskId, date) => App.setTask(taskId, date || App.today, true);
+  App.toggleTask = (taskId, date, on) => App.setTask(taskId, date, on);
   App.isDone = (taskId, date) => ((App.state.completions[date] || []).includes(taskId));
+  App.liveEvents = () => App.state.events.filter((e) => !e.deleted);
 
   App.dueCardCount = function (lv) {
     const data = App.levelData(lv);
@@ -192,6 +213,18 @@
         ${id === 'wrong' && wrongN ? `<span class="badge">${wrongN}</span>` : ''}
       </button>`).join('');
     nav.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => App.go(b.dataset.route)));
+
+    // 모바일 하단 탭: 자주 쓰는 4개 + 더보기
+    const tab = document.getElementById('tabbar');
+    const inMore = !TABS.some(([id]) => id === App.route);
+    tab.innerHTML = [...TABS, ['more', '더보기']].map(([id, label]) => {
+      const cur = id === 'more' ? inMore : App.route === id;
+      return `<button data-route="${id}" ${cur ? 'aria-current="page"' : ''}>
+        <svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[id]}</svg><span>${label}</span>
+        ${id === 'more' && wrongN ? '<i class="tdot" aria-label="미해결 오답 있음"></i>' : ''}</button>`;
+    }).join('');
+    tab.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => App.go(b.dataset.route)));
+
     const p = App.state.profile;
     const sub = document.getElementById('brand-sub');
     const foot = document.getElementById('sidebar-foot');
@@ -203,6 +236,9 @@
       sub.textContent = '학습 계획을 만들어 보세요';
       foot.textContent = '';
     }
+    if (App.sync) foot.innerHTML += `<div><button class="linklike" id="foot-sync">${App.esc(App.sync.label())}</button></div>`;
+    const fs = document.getElementById('foot-sync');
+    if (fs) fs.addEventListener('click', () => App.go('settings'));
   };
 
   App.render = function () {

@@ -33,10 +33,10 @@
             <div class="kpi"><div class="label">예상 학습 시간</div><div class="sub" style="font-size:13px;color:var(--text);margin-top:6px">${App.esc(g.studyHours)}</div></div>
           </div></div>
         <div class="grid g2">
-          <div class="card"><h2>시험 시간</h2><table><thead><tr><th>과목</th><th class="num">시간</th></tr></thead><tbody>
-            ${TIMES[lv].map(([n, t]) => `<tr><td>${n}</td><td class="num">${t}분</td></tr>`).join('')}</tbody></table></div>
-          <div class="card"><h2>득점 구분과 기준점</h2><table><thead><tr><th>득점 구분</th><th class="num">만점</th><th class="num">기준점</th></tr></thead><tbody>
-            ${groupNames.map((n, i) => `<tr><td>${n}</td><td class="num">${pass.max[i]}</td><td class="num">${pass.min[i]}</td></tr>`).join('')}</tbody></table>
+          <div class="card"><h2>시험 시간</h2><div class="table-wrap"><table><thead><tr><th>과목</th><th class="num">시간</th></tr></thead><tbody>
+            ${TIMES[lv].map(([n, t]) => `<tr><td>${n}</td><td class="num">${t}분</td></tr>`).join('')}</tbody></table></div></div>
+          <div class="card"><h2>득점 구분과 기준점</h2><div class="table-wrap"><table><thead><tr><th>득점 구분</th><th class="num">만점</th><th class="num">기준점</th></tr></thead><tbody>
+            ${groupNames.map((n, i) => `<tr><td>${n}</td><td class="num">${pass.max[i]}</td><td class="num">${pass.min[i]}</td></tr>`).join('')}</tbody></table></div>
             <p class="small muted" style="margin-top:8px">총점이 합격점 이상이고, 모든 득점 구분이 기준점 이상이어야 합격입니다.</p></div>
         </div>
         <div class="grid g2">${g.sections.map((s) => `<div class="card"><div class="card-head"><h2>${App.esc(s.name)}</h2>${App.sectionChip(s.id)}</div>
@@ -44,10 +44,10 @@
           <div class="row" style="margin-top:12px"><button class="btn sm" data-practice="${s.id}">${App.esc(s.name)} 문제 풀기</button></div></div>`).join('')}</div>
         <div class="card"><h2>${lv} 학습 전략</h2><ol class="tips">${g.strategies.map((t) => `<li>${App.esc(t)}</li>`).join('')}</ol></div>
         <div class="card"><div class="card-head"><h2>핵심 문법 ${g.grammarPoints.length}개</h2><span class="small muted">예문 옆 ▶ 버튼으로 발음을 들을 수 있어요</span></div>
-          <table><thead><tr><th style="width:22%">문형</th><th style="width:22%">의미</th><th>예문</th><th></th></tr></thead><tbody>
+          <div class="table-wrap"><table><thead><tr><th style="width:22%">문형</th><th style="width:22%">의미</th><th>예문</th><th></th></tr></thead><tbody>
           ${g.grammarPoints.map((p, i) => `<tr><td class="ja" lang="ja"><b>${App.esc(p.pattern)}</b></td><td>${App.esc(p.meaning)}</td>
             <td><div class="ja" lang="ja">${App.esc(p.example)}</div><div class="small muted">${App.esc(p.exampleKo)}</div></td>
-            <td><button class="btn ghost sm" data-say="${i}" aria-label="예문 듣기">▶</button></td></tr>`).join('')}</tbody></table></div>
+            <td><button class="btn ghost sm" data-say="${i}" aria-label="예문 듣기">▶</button></td></tr>`).join('')}</tbody></table></div></div>
         <div class="card"><h2>시험 정보</h2>
           <ul class="tips">
             <li>JLPT는 매년 7월·12월 첫째 일요일에 시행됩니다. 다음 시험일: ${exams.map((d) => App.esc(dates.formatKo(d))).join(', ')}</li>

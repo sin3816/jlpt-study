@@ -2,7 +2,9 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <!--WEB-HEAD-->
   <title>JLPT 스터디</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -20,15 +22,20 @@
       <div class="sidebar-foot" id="sidebar-foot"></div>
     </aside>
     <main class="main" id="main" tabindex="-1"></main>
+    <nav class="tabbar" id="tabbar" aria-label="하단 메뉴"></nav>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <div class="modal-backdrop" id="modal" hidden></div>
 
+  <!--PLATFORM-->
   <script src="../core/dates.js"></script>
+  <script src="../core/state.js"></script>
   <script src="../core/srs.js"></script>
   <script src="../core/planner.js"></script>
   <script src="../core/quiz.js"></script>
+  <script src="../core/sync.js"></script>
   <script src="app.js"></script>
+  <script src="sync.js"></script>
   <script src="views/dashboard.js"></script>
   <script src="views/plan.js"></script>
   <script src="views/schedule.js"></script>
@@ -38,6 +45,7 @@
   <script src="views/wrong.js"></script>
   <script src="views/stats.js"></script>
   <script src="views/settings.js"></script>
+  <script src="views/more.js"></script>
   <script src="boot.js"></script>
 </body>
 </html>

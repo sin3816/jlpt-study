@@ -1,7 +1,7 @@
 {
   "name": "jlpt-study",
   "productName": "JLPT 스터디",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "JLPT N5~N1 학습 계획·일정·가이드·연습문제 데스크톱 앱",
   "main": "src/main/main.js",
   "author": "Eastar IT",
@@ -15,7 +15,9 @@
     "test": "npm run validate && npm run test:unit && npm run test:e2e",
     "check": "npm run validate && npm run test:unit",
     "dist:win": "electron-builder --win portable nsis --x64",
-    "dist:win:portable": "electron-builder --win portable --x64"
+    "dist:win:portable": "electron-builder --win portable --x64",
+    "build:web": "node scripts/build-web.js",
+    "serve:web": "node scripts/serve-web.js"
   },
   "build": {
     "appId": "com.eastarjet.jlptstudy",
@@ -25,7 +27,9 @@
       "buildResources": "build"
     },
     "files": [
-      "src/**/*",
+      "src/core/**/*",
+      "src/main/**/*",
+      "src/renderer/**/*",
       "data/**/*",
       "package.json"
     ],

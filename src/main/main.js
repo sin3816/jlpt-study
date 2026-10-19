@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, net } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { Store, migrate } = require('./store');
@@ -8,6 +8,9 @@ const { Store, migrate } = require('./store');
 if (process.env.JLPT_USER_DATA) app.setPath('userData', process.env.JLPT_USER_DATA);
 
 const ROOT = path.join(__dirname, '..', '..');
+// 동기화 서버(기본 GitHub). 테스트에서는 JLPT_SYNC_API 로 모의 서버를 지정한다.
+const SYNC_API = process.env.JLPT_SYNC_API || 'https://api.github.com';
+const ALLOWED_ORIGINS = new Set([new URL(SYNC_API).origin, 'https://gist.githubusercontent.com']);
 let store;
 let win;
 
@@ -50,6 +53,20 @@ function registerIpc() {
   ipcMain.handle('state:save', (_e, state) => store.save(state));
   ipcMain.handle('content:load', () => loadContent());
   ipcMain.handle('env:today', () => process.env.JLPT_TODAY || null);
+  ipcMain.handle('env:config', () => ({ platform: 'desktop', syncApi: SYNC_API }));
+  // 동기화용 HTTP: 허용된 호스트(GitHub API·Gist 원본)로만 요청을 중계한다
+  ipcMain.handle('http:fetch', async (_e, url, opts = {}) => {
+    let u;
+    try { u = new URL(url); } catch (_) { return { status: 0, body: '', error: 'bad url' }; }
+    if (!ALLOWED_ORIGINS.has(u.origin)) return { status: 0, body: '', error: `허용되지 않은 주소: ${u.origin}` };
+    try {
+      // net.fetch: Chromium 네트워크 스택 → Windows 프록시 설정을 따른다
+      const r = await net.fetch(url, { method: opts.method || 'GET', headers: opts.headers || {}, body: opts.body });
+      return { status: r.status, body: await r.text() };
+    } catch (err) {
+      return { status: 0, body: '', error: String(err.message || err) };
+    }
+  });
   ipcMain.handle('data:export', async (_e, state) => {
     const r = await dialog.showSaveDialog(win, {
       title: '학습 데이터 내보내기',
@@ -68,9 +85,9 @@ function registerIpc() {
     });
     if (r.canceled || !r.filePaths[0]) return { ok: false };
     try {
-      const state = migrate(JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')));
-      store.save(state);
-      return { ok: true, state };
+      // 병합은 렌더러가 한다(덮어쓰기 X)
+      const raw = JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8'));
+      return { ok: true, state: migrate(raw) };
     } catch (err) {
       return { ok: false, error: String(err.message || err) };
     }

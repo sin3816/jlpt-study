@@ -16,9 +16,9 @@
       const cell = (c) => {
         const tasks = planner.tasksFor(p, c.iso, plan);
         const done = tasks.filter((t) => App.isDone(t.id, c.iso)).length;
-        const evs = App.state.events.filter((e) => e.date === c.iso);
+        const evs = App.liveEvents().filter((e) => e.date === c.iso);
         const isExam = c.iso === p.examDate;
-        const cls = ['day', c.inMonth ? '' : 'out', c.iso === App.today ? 'today' : '', c.iso === sel ? 'sel' : '', isExam ? 'exam' : ''].join(' ');
+        const cls = ['day', tasks.length && !isExam ? 'has-task' : '', tasks.length && done === tasks.length ? 'all-done' : '', evs.length ? 'has-ev' : '', c.inMonth ? '' : 'out', c.iso === App.today ? 'today' : '', c.iso === sel ? 'sel' : '', isExam ? 'exam' : ''].join(' ');
         let mini = '';
         if (isExam) mini = `JLPT ${p.level}`;
         else if (tasks.length) mini = `${done}/${tasks.length} 완료`;
@@ -33,7 +33,7 @@
 
       const prevYm = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
       const nextYm = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-      const evs = App.state.events.filter((e) => e.date === sel);
+      const evs = App.liveEvents().filter((e) => e.date === sel);
 
       root.appendChild(App.el(`<div class="page">
         <div class="page-head"><div><h1>일정</h1><p>날짜를 눌러 할 일을 확인하고, 접수·모의고사 같은 개인 일정을 추가하세요.</p></div>
@@ -62,12 +62,13 @@
         e.preventDefault();
         const title = e.target.title.value.trim();
         if (!title) return;
-        App.state.events.push({ id: `ev-${Date.now()}`, date: sel, title });
+        App.state.events.push({ id: App.newId('ev'), date: sel, title, t: App.now() });
         App.save();
         App.go('schedule', { ym, date: sel });
       });
       root.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => {
-        App.state.events = App.state.events.filter((e) => e.id !== b.dataset.del);
+        const ev = App.state.events.find((e) => e.id === b.dataset.del);
+        if (ev) { ev.deleted = true; ev.t = App.now(); } // 동기화를 위해 삭제 표시(톰스톤)
         App.save();
         App.go('schedule', { ym, date: sel });
       }));

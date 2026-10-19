@@ -49,14 +49,14 @@
           <button class="btn" data-q="1">어려움<small>${preview(card, 1)}</small></button>
           <button class="btn" data-q="2">알맞음<small>${preview(card, 2)}</small></button>
           <button class="btn primary" data-q="3">쉬움<small style="color:inherit;opacity:.8">${preview(card, 3)}</small></button></div>`
-        : '<div class="row" style="justify-content:center;margin-top:12px"><button class="btn primary" id="flip">뒤집기 <span class="kbd" style="color:inherit">Space</span></button></div>'}
-      <p class="small muted" style="text-align:center;margin-top:10px">단축키: Space 뒤집기 · 1 모름 · 2 어려움 · 3 알맞음 · 4 쉬움</p>
+        : '<div class="row" style="justify-content:center;margin-top:12px"><button class="btn primary" id="flip">뒤집기 <span class="kbd kbd-hint" style="color:inherit">Space</span></button></div>'}
+      <p class="small muted kbd-hint" style="text-align:center;margin-top:10px">단축키: Space 뒤집기 · 1 모름 · 2 어려움 · 3 알맞음 · 4 쉬움</p>
     </div></div>`));
 
     const flip = () => { V.flipped = true; renderCard(root); };
     const rate = (q) => {
       const key = `${V.level}|${w.word}`;
-      App.state.cards[key] = srs.review(App.state.cards[key], q, App.today);
+      App.state.cards[key] = Object.assign(srs.review(App.state.cards[key], q, App.today), { t: App.now() });
       V.queue.shift();
       if (q === 0) { V.queue.splice(Math.min(3, V.queue.length), 0, w); V.again++; } else V.done++;
       V.flipped = false;
@@ -109,9 +109,9 @@
       ${tab === 'today' ? `<div class="card empty"><h3>${r.due.length + r.fresh.length ? `오늘 ${r.due.length + r.fresh.length}장을 학습합니다` : '오늘 학습할 카드가 없습니다'}</h3>
           <p>${r.due.length + r.fresh.length ? '카드를 보고 뜻을 떠올린 뒤, 얼마나 잘 기억했는지 평가하세요.' : '내일 다시 확인하거나, 다른 레벨을 선택해 보세요.'}</p>
           ${r.due.length + r.fresh.length ? '<button class="btn primary" id="go" style="margin-top:14px">학습 시작</button>' : ''}</div>`
-        : `<div class="card"><table><thead><tr><th>단어</th><th>읽기</th><th>뜻</th><th>예문</th><th>상태</th></tr></thead><tbody>
+        : `<div class="card"><div class="table-wrap"><table><thead><tr><th>단어</th><th>읽기</th><th>뜻</th><th>예문</th><th>상태</th></tr></thead><tbody>
           ${data.vocab.map((w) => `<tr><td class="ja" lang="ja"><b>${App.esc(w.word)}</b></td><td class="ja" lang="ja">${App.esc(w.reading)}</td><td>${App.esc(w.meaning)}</td>
-            <td><div class="ja small" lang="ja">${App.esc(w.example)}</div><div class="small muted">${App.esc(w.exampleKo)}</div></td><td>${status(w)}</td></tr>`).join('')}</tbody></table></div>`}
+            <td><div class="ja small" lang="ja">${App.esc(w.example)}</div><div class="small muted">${App.esc(w.exampleKo)}</div></td><td>${status(w)}</td></tr>`).join('')}</tbody></table></div></div>`}
     </div>`));
     root.querySelectorAll('[data-lv]').forEach((b) => b.addEventListener('click', () => App.go('vocab', { level: b.dataset.lv, tab })));
     root.querySelectorAll('[data-t]').forEach((b) => b.addEventListener('click', () => App.go('vocab', { level: lv, tab: b.dataset.t })));

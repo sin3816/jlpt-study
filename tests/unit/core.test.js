@@ -168,14 +168,17 @@ test('quiz: 연속 학습일', () => {
 test('store: 저장·로드·손상 복구', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jlpt-'));
   const st = new Store(dir);
-  assert.deepEqual(st.load(), defaultState());
+  const first = st.load();
+  assert.equal(first.profile, null);
+  assert.ok(first.local.deviceId, '기기 ID 생성');
+  assert.equal(st.load().local.deviceId, first.local.deviceId, '기기 ID 유지');
   const s = defaultState();
   s.profile = profile;
   st.save(s);
   st.save(s); // 백업 생성
-  assert.deepEqual(st.load().profile, profile);
+  assert.deepEqual(st.load().profile, Object.assign({}, profile, { t: 0 }));
   fs.writeFileSync(path.join(dir, 'jlpt-data.json'), '{broken');
-  assert.deepEqual(st.load().profile, profile); // 백업에서 복구
+  assert.deepEqual(st.load().profile, Object.assign({}, profile, { t: 0 })); // 백업에서 복구
 });
 
 test('content: 모든 레벨 파일이 스키마를 통과한다', () => {
