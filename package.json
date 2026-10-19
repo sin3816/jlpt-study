@@ -1,0 +1,53 @@
+{
+  "name": "jlpt-study",
+  "productName": "JLPT 스터디",
+  "version": "1.0.0",
+  "description": "JLPT N5~N1 학습 계획·일정·가이드·연습문제 데스크톱 앱",
+  "main": "src/main/main.js",
+  "author": "Eastar IT",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "validate": "node scripts/validate-content.js",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:e2e": "playwright test",
+    "test": "npm run validate && npm run test:unit && npm run test:e2e",
+    "check": "npm run validate && npm run test:unit",
+    "dist:win": "electron-builder --win portable nsis --x64",
+    "dist:win:portable": "electron-builder --win portable --x64"
+  },
+  "build": {
+    "appId": "com.eastarjet.jlptstudy",
+    "productName": "JLPT Study",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "data/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "JLPT-Study-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "JLPT-Study-Portable-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56",
+    "electron": "^38.8.6",
+    "electron-builder": "^26.15.3"
+  }
+}

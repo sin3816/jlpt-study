@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>JLPT 스터디</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">日</div>
+        <div>
+          <div class="brand-name">JLPT 스터디</div>
+          <div class="brand-sub" id="brand-sub">학습 계획을 만들어 보세요</div>
+        </div>
+      </div>
+      <nav class="nav" id="nav" aria-label="주 메뉴"></nav>
+      <div class="sidebar-foot" id="sidebar-foot"></div>
+    </aside>
+    <main class="main" id="main" tabindex="-1"></main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="modal-backdrop" id="modal" hidden></div>
+
+  <script src="../core/dates.js"></script>
+  <script src="../core/srs.js"></script>
+  <script src="../core/planner.js"></script>
+  <script src="../core/quiz.js"></script>
+  <script src="app.js"></script>
+  <script src="views/dashboard.js"></script>
+  <script src="views/plan.js"></script>
+  <script src="views/schedule.js"></script>
+  <script src="views/guide.js"></script>
+  <script src="views/practice.js"></script>
+  <script src="views/vocab.js"></script>
+  <script src="views/wrong.js"></script>
+  <script src="views/stats.js"></script>
+  <script src="views/settings.js"></script>
+  <script src="boot.js"></script>
+</body>
+</html>
