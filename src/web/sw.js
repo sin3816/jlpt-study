@@ -1,5 +1,5 @@
 // 서비스 워커: 앱 파일을 모두 미리 저장해 두고 오프라인에서도 실행되게 한다.
-// __VERSION__ / __FILES__ 는 scripts/build-web.js 가 채운다.
+// 버전과 파일 목록은 scripts/build-web.js 가 빌드할 때 채운다.
 const VERSION = '__VERSION__';
 const CACHE = `jlpt-study-${VERSION}`;
 const FILES = __FILES__;

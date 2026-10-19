@@ -9,6 +9,7 @@
 
   const S = {
     running: null,
+    again: false,
     timer: null,
     status: 'off',   // off | idle | syncing | error
     listeners: new Set(),
@@ -28,14 +29,16 @@
 
   // 진행 중인 풀이·카드 학습 화면은 다시 그리지 않는다(상태 객체는 그대로라 기록은 이어짐)
   function safeToRerender() {
-    if (document.querySelector('.quiz, .flash')) return false;
+    if (document.querySelector('.quiz, .flash')) return false;                       // 풀이·카드 진행 중
+    if (App.route === 'plan' && App.params && App.params.edit) return false;           // 계획 수정 폼
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return false;
+    if ([...document.querySelectorAll('#main input[type=text], #main input[type=password]')].some((i) => i.value)) return false; // 입력 중인 글
     return true;
   }
 
   async function run(reason = 'manual') {
     if (!enabled()) { S.status = 'off'; emit(); return { skipped: true }; }
-    if (S.running) return S.running;
+    if (S.running) { S.again = true; return S.running; } // 끝나면 한 번 더
     clearTimeout(S.timer);
     S.status = 'syncing'; emit();
     S.running = (async () => {
@@ -43,12 +46,14 @@
       try {
         const client = new core.GistClient(c.token, http, App.env.syncApi);
         const r = await core.syncOnce(App.state, client, { gistId: c.gistId });
+        App.observeStamps();
         c.gistId = r.gistId;
         c.lastSyncAt = Date.now();
         c.lastError = '';
         c.lastRemoteUpdatedAt = r.updatedAt || c.lastRemoteUpdatedAt;
         await window.api.saveState(App.state);
         S.status = 'idle';
+        if (r.dirty) S.again = true; // 업로드 중 생긴 기록이 있음
         if (r.localChanged) {
           App.renderNav();
           if (safeToRerender()) App.render();
@@ -64,6 +69,7 @@
       } finally {
         S.running = null;
         emit();
+        if (S.again) { S.again = false; setTimeout(() => run('again'), 500); }
       }
     })();
     return S.running;
@@ -95,6 +101,7 @@
     clearTimeout(S.timer);
     S.status = 'off';
     await window.api.saveState(App.state);
+    await window.api.saveState(App.state); // 백업 파일에 남은 토큰까지 덮어쓰기
     emit();
   }
 

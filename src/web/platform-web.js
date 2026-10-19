@@ -100,10 +100,10 @@
 
     async httpFetch(url, opts = {}) {
       try {
-        const r = await fetch(url, { method: opts.method || 'GET', headers: opts.headers || {}, body: opts.body, cache: 'no-store' });
+        const r = await fetch(url, { method: opts.method || 'GET', headers: opts.headers || {}, body: opts.body, cache: 'no-store', signal: AbortSignal.timeout(30000) });
         return { status: r.status, body: await r.text() };
       } catch (e) {
-        return { status: 0, body: '', error: navigator.onLine === false ? '오프라인 상태입니다' : String(e.message || e) };
+        return { status: 0, body: '', error: navigator.onLine === false ? '오프라인 상태입니다' : e && e.name === 'TimeoutError' ? '응답 시간 초과' : String(e.message || e) };
       }
     },
   };

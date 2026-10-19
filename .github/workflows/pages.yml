@@ -1,0 +1,44 @@
+# 모바일 웹앱(PWA)을 GitHub Pages 에 배포한다. main 브랜치에 push 하면 자동 실행.
+name: 웹앱 배포 (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 콘텐츠·로직 검사
+        run: |
+          node scripts/validate-content.js
+          node --test tests/unit/*.test.js
+      - name: 웹앱 빌드
+        run: node scripts/build-web.js www
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

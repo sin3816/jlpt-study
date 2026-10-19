@@ -115,7 +115,9 @@
   };
 
   // 동기화용 타임스탬프: 같은 기기에서 단조 증가 보장
+  // 하이브리드 논리 시계: 기기 시계가 늦어도 이미 본 가장 큰 시각보다 항상 크게 → 기기 간 시계 차이로 기록이 지워지거나 뒤집히지 않음
   let lastNow = 0;
+  App.observeStamps = function () { lastNow = Math.max(lastNow, JLPT.state.maxStamp(App.state)); };
   App.now = function () { lastNow = Math.max(Date.now(), lastNow + 1); return lastNow; };
   App.newId = (p) => `${p}-${App.state.local.deviceId}-${App.now().toString(36)}`;
   App.activityOn = (d) => JLPT.state.activityOn(App.state, d);
@@ -242,6 +244,8 @@
   };
 
   App.render = function () {
+    if (typeof App.cleanup === 'function') { try { App.cleanup(); } catch (_) { /* noop */ } }
+    App.cleanup = null;
     App.renderNav();
     const main = document.getElementById('main');
     main.innerHTML = '';

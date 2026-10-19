@@ -9,7 +9,7 @@ if (process.env.JLPT_USER_DATA) app.setPath('userData', process.env.JLPT_USER_DA
 
 const ROOT = path.join(__dirname, '..', '..');
 // 동기화 서버(기본 GitHub). 테스트에서는 JLPT_SYNC_API 로 모의 서버를 지정한다.
-const SYNC_API = process.env.JLPT_SYNC_API || 'https://api.github.com';
+const SYNC_API = (!app.isPackaged && process.env.JLPT_SYNC_API) || 'https://api.github.com'; // 배포판은 항상 GitHub
 const ALLOWED_ORIGINS = new Set([new URL(SYNC_API).origin, 'https://gist.githubusercontent.com']);
 let store;
 let win;
@@ -55,16 +55,19 @@ function registerIpc() {
   ipcMain.handle('env:today', () => process.env.JLPT_TODAY || null);
   ipcMain.handle('env:config', () => ({ platform: 'desktop', syncApi: SYNC_API }));
   // 동기화용 HTTP: 허용된 호스트(GitHub API·Gist 원본)로만 요청을 중계한다
-  ipcMain.handle('http:fetch', async (_e, url, opts = {}) => {
+  ipcMain.handle('http:fetch', async (e, url, opts = {}) => {
+    if (!e.senderFrame || !String(e.senderFrame.url).startsWith('file://')) return { status: 0, body: '', error: '허용되지 않은 호출' };
+    const method = String(opts.method || 'GET').toUpperCase();
+    if (!['GET', 'POST', 'PATCH'].includes(method)) return { status: 0, body: '', error: '허용되지 않은 메서드' };
     let u;
     try { u = new URL(url); } catch (_) { return { status: 0, body: '', error: 'bad url' }; }
     if (!ALLOWED_ORIGINS.has(u.origin)) return { status: 0, body: '', error: `허용되지 않은 주소: ${u.origin}` };
     try {
       // net.fetch: Chromium 네트워크 스택 → Windows 프록시 설정을 따른다
-      const r = await net.fetch(url, { method: opts.method || 'GET', headers: opts.headers || {}, body: opts.body });
+      const r = await net.fetch(url, { method, headers: opts.headers || {}, body: opts.body, redirect: 'error', signal: AbortSignal.timeout(30000) });
       return { status: r.status, body: await r.text() };
     } catch (err) {
-      return { status: 0, body: '', error: String(err.message || err) };
+      return { status: 0, body: '', error: err && err.name === 'TimeoutError' ? '응답 시간 초과' : String(err.message || err) };
     }
   });
   ipcMain.handle('data:export', async (_e, state) => {

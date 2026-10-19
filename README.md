@@ -1,9 +1,11 @@
 # JLPT 스터디
 
+> **폰(갤럭시 S24 Ultra) 설치와 PC↔폰 동기화:** [docs/MOBILE_INSTALL.md](docs/MOBILE_INSTALL.md) · 동기화 설계: [docs/SYNC_DESIGN.md](docs/SYNC_DESIGN.md)
+
 JLPT N5~N1 수험생을 위한 Windows 데스크톱 학습 앱입니다. 시험일까지의 학습 계획과 날짜별 할 일을 만들어 주고, 레벨별 가이드·연습문제·단어 카드·오답노트·통계를 한곳에서 관리합니다. 인터넷 없이 동작하며 기록은 내 PC에만 저장됩니다.
 
 ## 바로 실행
-`release/JLPT-Study-Portable-1.0.0.exe` 를 더블클릭하면 설치 없이 실행됩니다.
+`release/JLPT-Study-Portable-1.1.0.exe` 를 더블클릭하면 설치 없이 실행됩니다.
 서명되지 않은 앱이라 처음에 SmartScreen 경고가 뜨면 **추가 정보 → 실행**을 누르세요. 첫 실행은 압축을 푸느라 몇 초 걸립니다.
 
 ## 주요 기능
@@ -18,7 +20,8 @@ JLPT N5~N1 수험생을 위한 Windows 데스크톱 학습 앱입니다. 시험�
 | 단어장 | 레벨별 단어 카드, 간격 반복(모름·어려움·알맞음·쉬움) |
 | 오답노트 | 틀린 문제 자동 수집, 2번 연속 맞히면 자동 해결, 다시 풀기 |
 | 통계 | 최근 14일 학습량, 섹션별 정답률, 모의고사 기록, 약한 유형 |
-| 설정 | 라이트/다크 테마, 일본어 음성 속도, 하루 새 단어 수, 데이터 내보내기/가져오기/초기화 |
+| 설정 | PC↔폰 자동 동기화(GitHub Gist), 라이트/다크 테마, 일본어 음성 속도, 하루 새 단어 수, 내보내기/가져와서 합치기/초기화 |
+| 모바일 | 같은 기능을 폰 화면(하단 탭)으로. 홈 화면에 설치, 오프라인 실행 |
 
 **청해·발음**은 Windows의 일본어 음성(TTS)을 사용합니다. 소리가 나지 않으면 Windows 설정 → 시간 및 언어 → 언어 및 지역에서 **일본어**를 추가하고 음성 기능을 설치하세요. 음성이 없으면 스크립트를 대신 보여 줍니다.
 
@@ -35,8 +38,10 @@ npm install
 npm start             # 앱 실행
 npm run validate      # 콘텐츠(JSON) 검증
 npm run test:unit     # 코어 로직 단위 테스트
-npm run test:e2e      # Electron UI 전체 흐름 테스트 (Playwright)
+npm run test:e2e      # E2E: Electron 전체 흐름 + S24 화면 웹앱 + PC↔폰 동기화 (Playwright)
 npm test              # 위 세 가지 전부
+npm run build:web     # 모바일 웹앱(PWA) → www/
+npm run serve:web     # www/ 로컬 미리보기 (http://127.0.0.1:8080)
 npm run dist:win      # Windows 설치본 + 포터블 exe → dist/
 ```
 

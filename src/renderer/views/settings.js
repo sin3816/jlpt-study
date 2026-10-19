@@ -20,7 +20,7 @@
         <div class="row"><button class="btn primary" id="sync-now">지금 동기화</button><span style="flex:1"></span><button class="btn danger" id="sync-off">연결 해제</button></div>`
       : `
         <p class="muted">GitHub 계정의 <b>개인 액세스 토큰</b>(Gists 읽기·쓰기 권한만)을 입력하면 이 기기와 다른 기기의 학습 기록이 자동으로 합쳐집니다. 만드는 방법은 설치 가이드(docs/MOBILE_INSTALL.md)를 참고하세요.</p>
-        <form class="row" id="sync-form"><input type="text" name="token" placeholder="github_pat_… 또는 ghp_…" autocomplete="off" spellcheck="false" style="flex:1;min-width:200px" aria-label="GitHub 토큰">
+        <form class="row" id="sync-form"><input type="password" name="token" placeholder="github_pat_… 또는 ghp_…" autocomplete="off" spellcheck="false" style="flex:1;min-width:200px" aria-label="GitHub 토큰">
           <button class="btn primary" type="submit" id="sync-connect">연결</button></form>
         <p class="small muted">토큰은 이 기기에만 저장되며 내보내기 파일에는 포함되지 않습니다.</p>`}
     </div>`;
@@ -32,7 +32,7 @@
       const voice = App.tts.voice();
       const isWeb = App.env.platform === 'web';
       const voiceHelp = isWeb
-        ? '일본어 음성이 없습니다. 휴대폰 설정 → 일반 → 글자 읽어주기(TTS)에서 기본 엔진을 <b>Google 음성 인식 및 합성</b>으로 바꾸고, 엔진 설정에서 <b>일본어</b> 음성 데이터를 설치하세요. 음성이 없어도 청해 스크립트로 학습할 수 있습니다.'
+        ? '일본어 음성이 없습니다. 휴대폰 <b>설정</b> 검색창에서 <b>TTS</b>(텍스트 음성 변환)를 찾아 기본 엔진을 <b>Google</b>로 바꾸고, 엔진 설정 → 음성 데이터 설치에서 <b>일본어</b>를 내려받은 뒤 앱을 다시 여세요. 음성이 없어도 청해 스크립트로 학습할 수 있습니다.'
         : '일본어 음성이 설치되어 있지 않습니다. Windows 설정 → 시간 및 언어 → 언어 및 지역에서 <b>일본어</b>를 추가하고, 음성 기능(텍스트 음성 변환)을 설치한 뒤 앱을 다시 실행하세요. 음성이 없어도 청해 스크립트로 학습할 수 있습니다.';
       root.appendChild(App.el(`<div class="page">
         <div class="page-head"><div><h1>설정</h1><p>동기화, 화면, 음성, 학습량과 데이터 백업을 관리합니다.</p></div></div>
@@ -74,7 +74,7 @@
       if (form) form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const token = form.token.value.trim();
-        if (!/^(github_pat_|ghp_|gho_|ghu_)[A-Za-z0-9_]{20,}$/.test(token) && !App.env.syncApi.startsWith('http://127.0.0.1')) {
+        if (!/^(github_pat_|ghp_|gho_|ghu_)[A-Za-z0-9_]{20,}$/.test(token)) {
           App.toast('GitHub 토큰 형식이 아닙니다'); return;
         }
         const btn = root.querySelector('#sync-connect');
@@ -117,8 +117,12 @@
         const r = await window.api.importData();
         if (r.ok) {
           const incoming = JLPT.state.normalize(r.state);
+          if ((incoming.resetAt || 0) > (App.state.resetAt || 0)
+            && !(await App.confirm('초기화된 기록 포함', '가져오는 파일은 다른 기기에서 "모든 기록 초기화"를 한 뒤의 데이터입니다. 합치면 이 기기의 그 이전 기록도 지워집니다. 계속할까요?', '합치기', true))) return;
           JLPT.sync.applyTo(App.state, JLPT.sync.merge(App.state, incoming));
+          App.observeStamps();
           await App.flush();
+          App.sync.schedule();
           App.toast('가져온 기록을 합쳤습니다');
           App.go('dashboard');
         } else if (r.error) App.toast(`가져오기 실패: ${r.error}`);
@@ -128,9 +132,9 @@
           ? '학습 계획, 풀이 기록, 단어 카드, 일정이 모두 삭제됩니다. 동기화가 켜져 있어 연결된 다른 기기의 기록도 함께 초기화됩니다. 되돌릴 수 없습니다.'
           : '학습 계획, 풀이 기록, 단어 카드, 일정이 모두 삭제됩니다. 되돌릴 수 없습니다.';
         if (!(await App.confirm('모든 기록 초기화', msg, '초기화', true))) return;
-        const t = App.now();
         const fresh = JLPT.state.defaultState();
-        fresh.resetAt = t;
+        // 동기화 중일 때만 초기화 시각을 남겨 다른 기기에도 전파. 아니면 이 기기만 비운다
+        fresh.resetAt = App.sync.enabled() ? App.now() : App.state.resetAt;
         fresh.settings = App.state.settings;
         fresh.local = App.state.local;
         for (const k of Object.keys(App.state)) delete App.state[k];

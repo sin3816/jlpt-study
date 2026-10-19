@@ -6,6 +6,7 @@
   ]);
   App.content = content;
   App.state = JLPT.state.normalize(state);
+  App.observeStamps();
   App.env = Object.assign({ platform: 'desktop', syncApi: 'https://api.github.com' }, env || {});
   document.documentElement.dataset.platform = App.env.platform;
   App.today = envToday || App.dates.toISO(new Date());

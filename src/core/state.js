@@ -75,8 +75,9 @@
 
     s.settings = Object.assign(defaultSettings(), isObj(raw.settings) ? raw.settings : {});
     const loc = isObj(raw.local) ? raw.local : {};
+    const dev = loc.deviceId || randomId();
     s.local = {
-      deviceId: loc.deviceId || randomId(),
+      deviceId: dev,
       deviceName: loc.deviceName || '',
       sync: Object.assign(defaultSync(), isObj(loc.sync) ? loc.sync : {}),
     };
@@ -102,7 +103,7 @@
     // 일정
     if (Array.isArray(raw.events)) {
       s.events = raw.events.filter(isObj).map((e, i) => Object.assign({}, e, {
-        id: e.id || `ev-legacy-${i}-${e.date}`,
+        id: e.id || `ev-legacy-${dev}-${i}-${e.date}`,
         t: Number(e.t) || 0,
       }));
     }
@@ -110,7 +111,7 @@
     // 풀이 기록
     if (Array.isArray(raw.attempts)) {
       s.attempts = raw.attempts.filter(isObj).map((a, i) => Object.assign({}, a, {
-        id: a.id || `L${i}-${a.qid}-${a.at}`,
+        id: a.id || `L-${dev}-${i}-${a.qid}-${a.at}`,
         t: Number(a.t) || 0,
       }));
     }
@@ -127,7 +128,7 @@
       for (const [d, v] of Object.entries(raw.activity)) {
         if (!isObj(v)) continue;
         if (typeof v.q === 'number' || typeof v.cards === 'number') {
-          s.activity[d] = { legacy: { q: v.q || 0, cards: v.cards || 0, t: 0 } };
+          s.activity[d] = { [dev]: { q: v.q || 0, cards: v.cards || 0, t: 0 } };
         } else {
           const per = {};
           for (const [dev, c] of Object.entries(v)) if (isObj(c)) per[dev] = { q: c.q || 0, cards: c.cards || 0, t: Number(c.t) || 0 };
@@ -137,7 +138,7 @@
     }
 
     if (Array.isArray(raw.mocks)) {
-      s.mocks = raw.mocks.filter(isObj).map((m, i) => Object.assign({}, m, { id: m.id || `M${i}-${m.at}-${m.score}`, t: Number(m.t) || 0 }));
+      s.mocks = raw.mocks.filter(isObj).map((m, i) => Object.assign({}, m, { id: m.id || `M-${dev}-${i}-${m.at}-${m.score}`, t: Number(m.t) || 0 }));
     }
     return s;
   }
@@ -155,12 +156,27 @@
     return Object.keys(state.activity).filter((d) => { const a = activityOn(state, d); return a.q + a.cards > 0; });
   }
 
-  // 내보내기용: 토큰 같은 기기 비밀값 제거
+  // 내보내기용: 기기 전용 값(토큰·Gist ID 등) 전부 제거
   function forExport(state) {
     const c = JSON.parse(JSON.stringify(state));
-    if (c.local && c.local.sync) c.local.sync.token = '';
+    delete c.local;
     return c;
   }
 
-  return { SCHEMA_VERSION, defaultState, defaultSettings, defaultSync, normalize, deriveCompletions, activityOn, activeDays, forExport, randomId };
+  // 상태 안의 가장 큰 타임스탬프(하이브리드 논리 시계용)
+  function maxStamp(state) {
+    let m = Number(state.resetAt) || 0;
+    const see = (x) => { const t = x && Number(x.t); if (t > m) m = t; };
+    see(state.profile);
+    Object.values(state.compMeta || {}).forEach(see);
+    (state.events || []).forEach(see);
+    (state.attempts || []).forEach(see);
+    Object.values(state.wrong || {}).forEach(see);
+    Object.values(state.cards || {}).forEach(see);
+    Object.values(state.activity || {}).forEach((per) => Object.values(per).forEach(see));
+    (state.mocks || []).forEach(see);
+    return m;
+  }
+
+  return { SCHEMA_VERSION, defaultState, defaultSettings, defaultSync, normalize, deriveCompletions, activityOn, activeDays, forExport, maxStamp, randomId };
 });

@@ -136,14 +136,16 @@
     }
 
     async findGist() {
+      const found = [];
       for (let page = 1; page <= 10; page++) {
         const list = await this.req('GET', `/gists?per_page=100&page=${page}`);
-        if (!Array.isArray(list) || !list.length) return null;
-        const g = list.find((x) => x.files && x.files[FILE]);
-        if (g) return g.id;
-        if (list.length < 100) return null;
+        if (!Array.isArray(list) || !list.length) break;
+        found.push(...list.filter((x) => x.files && x.files[FILE]));
+        if (list.length < 100) break;
       }
-      return null;
+      // 여러 개면 가장 먼저 만들어진 것(모든 기기가 같은 것을 고르도록)
+      found.sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')) || String(a.id).localeCompare(String(b.id)));
+      return found.length ? found[0].id : null;
     }
 
     async createGist(payload) {
@@ -171,24 +173,29 @@
   }
 
   // 한 번의 동기화: 받기 → 병합 → (바뀌었으면) 올리기 → 로컬 반영
-  // 반환: { gistId, localChanged, pushed, updatedAt }
+  // 반환: { gistId, localChanged, pushed, updatedAt, dirty }
   async function syncOnce(state, client, opts = {}) {
     const deviceId = state.local.deviceId;
     let gistId = opts.gistId || '';
     let remote = null;
     let updatedAt = '';
-    if (!gistId) gistId = (await client.findGist()) || '';
-    if (gistId) {
+    const tryPull = async (id) => {
       try {
-        const r = await client.pull(gistId);
+        const r = await client.pull(id);
         remote = fromPayload(r.payload);
         updatedAt = r.updatedAt;
+        return id;
       } catch (e) {
         if (e.code !== 404) throw e;
-        gistId = '';
+        return '';
       }
+    };
+    if (gistId) gistId = await tryPull(gistId);
+    if (!gistId) { // 처음 연결했거나 저장된 Gist 가 사라짐 → 계정에서 다시 찾기
+      const found = await client.findGist();
+      if (found) gistId = await tryPull(found);
     }
-    const before = fingerprint(state);
+    const localFp = stable(merge(state, state));
     const merged = remote ? merge(state, remote) : merge(state, state);
     const mergedFp = stable(merged);
     const remoteFp = remote ? stable(remote) : null;
@@ -200,8 +207,11 @@
       const r = await client.push(gistId, toPayload(Object.assign({}, state, merged), deviceId));
       updatedAt = r.updatedAt; pushed = true;
     }
-    applyTo(state, merged);
-    return { gistId, localChanged: fingerprint(state) !== before, pushed, updatedAt };
+    // 업로드하는 동안 로컬에 새 기록이 생겼을 수 있으므로 지금 상태와 한 번 더 합친다(멱등이라 안전)
+    const final = merge(state, merged);
+    applyTo(state, final);
+    const dirty = stable(final) !== mergedFp; // true 면 아직 올리지 않은 변경이 있음 → 곧 다시 동기화
+    return { gistId, localChanged: mergedFp !== localFp, pushed, updatedAt, dirty };
   }
 
   return { FILE, DESC, SYNCED, stable, lww, merge, pick, fingerprint, applyTo, toPayload, fromPayload, GistClient, syncOnce };

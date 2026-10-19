@@ -90,12 +90,14 @@ test('normalize: v1 데이터 마이그레이션', () => {
     activity: { '2026-10-19': { q: 3, cards: 2 } },
     mocks: [{ level: 'N3', at: '2026-10-19', score: 80 }],
     settings: { theme: 'dark' },
+    local: { deviceId: 'pc1' },
   };
   const s = normalize(v1);
   assert.equal(s.profile.t, 0);
   assert.deepEqual(s.compMeta['2026-10-19|x'], { on: true, t: 0 });
   assert.deepEqual(s.completions['2026-10-19'], ['x', 'y']);
-  assert.ok(s.attempts[0].id);
+  assert.ok(s.attempts[0].id.includes('pc1'), '레거시 ID에 기기 ID 포함(기기 간 충돌 방지)');
+  assert.deepEqual(Object.keys(s.activity['2026-10-19']), ['pc1']);
   assert.deepEqual(stateMod.activityOn(s, '2026-10-19'), { q: 3, cards: 2 });
   assert.ok(s.mocks[0].id);
   assert.equal(s.settings.theme, 'dark');
@@ -132,6 +134,7 @@ function fakeGitHub() {
   let n = 0;
   let clock = 0;
   const calls = [];
+  const hooks = {};
   async function http(url, opts) {
     const u = new URL(url);
     calls.push(`${opts.method} ${u.pathname}`);
@@ -140,11 +143,11 @@ function fakeGitHub() {
     const body = opts.body ? JSON.parse(opts.body) : null;
     const now = () => `2026-10-19T00:00:${String(++clock).padStart(2, '0')}Z`;
     if (opts.method === 'GET' && u.pathname === '/gists') {
-      return { status: 200, body: JSON.stringify(u.searchParams.get('page') === '1' ? Object.values(gists).map((g) => ({ id: g.id, files: g.files })) : []) };
+      return { status: 200, body: JSON.stringify(u.searchParams.get('page') === '1' ? Object.values(gists).reverse().map((g) => ({ id: g.id, files: g.files, created_at: g.created_at })) : []) };
     }
     if (opts.method === 'POST' && u.pathname === '/gists') {
       const id = `g${++n}`;
-      gists[id] = { id, files: body.files, updated_at: now() };
+      gists[id] = { id, files: body.files, updated_at: now(), created_at: now() };
       return { status: 201, body: JSON.stringify(gists[id]) };
     }
     const id = u.pathname.split('/')[2];
@@ -155,13 +158,14 @@ function fakeGitHub() {
       return { status: 200, body: JSON.stringify({ id, updated_at: gists[id].updated_at, files: { 'jlpt-sync.json': big ? { content: f.content.slice(0, 100), truncated: true, raw_url: `https://raw.example/${id}` } : { content: f.content } } }) };
     }
     if (opts.method === 'PATCH') {
+      if (hooks.onPatch) hooks.onPatch();
       Object.assign(gists[id].files, body.files);
       gists[id].updated_at = now();
       return { status: 200, body: JSON.stringify(gists[id]) };
     }
     return { status: 405, body: '' };
   }
-  return { http, gists, calls };
+  return { http, gists, calls, hooks };
 }
 
 test('syncOnce: PC 첫 연결 → Gist 생성, 폰 연결 → 자동 발견·병합, 다시 PC → 폰 변경 수신', async () => {
@@ -205,4 +209,43 @@ test('syncOnce: Gist 가 삭제됐으면 새로 만든다', async () => {
   const gh = fakeGitHub();
   const r = await syncOnce(A(), new GistClient('good', gh.http), { gistId: 'gone' });
   assert.ok(r.gistId && r.gistId !== 'gone');
+});
+
+test('syncOnce: 업로드 중에 생긴 로컬 기록은 사라지지 않고 dirty 로 다시 올리게 한다', async () => {
+  const gh = fakeGitHub();
+  const pc = A();
+  const r1 = await syncOnce(pc, new GistClient('good', gh.http));
+  pc.attempts.push({ id: 'p2', qid: 'q', level: 'N3', section: 'vocab', chosen: 0, correct: true, at: '2026-10-19', t: 900 });
+  gh.hooks.onPatch = () => { // 업로드가 진행되는 동안 사용자가 문제를 하나 더 풂
+    pc.attempts.push({ id: 'during', qid: 'q2', level: 'N3', section: 'vocab', chosen: 1, correct: false, at: '2026-10-19', t: 901 });
+    pc.compMeta['2026-10-19|late'] = { on: true, t: 902 };
+  };
+  const r2 = await syncOnce(pc, new GistClient('good', gh.http), { gistId: r1.gistId });
+  assert.ok(pc.attempts.some((a) => a.id === 'during'), '업로드 중 기록 유지');
+  assert.ok(pc.compMeta['2026-10-19|late'], '업로드 중 체크 유지');
+  assert.equal(r2.dirty, true, '다시 올려야 함');
+  gh.hooks.onPatch = null;
+  const r3 = await syncOnce(pc, new GistClient('good', gh.http), { gistId: r1.gistId });
+  assert.equal(r3.dirty, false);
+  const remote = fromPayload(JSON.parse(gh.gists[r1.gistId].files['jlpt-sync.json'].content));
+  assert.ok(remote.attempts.some((a) => a.id === 'during'));
+});
+
+test('syncOnce: Gist 가 여러 개면 가장 오래된 것, 저장된 ID 가 404 면 다시 찾는다', async () => {
+  const gh = fakeGitHub();
+  const first = await syncOnce(A(), new GistClient('good', gh.http));
+  await new GistClient('good', gh.http).createGist(toPayload(B(), 'x')); // 다른 기기가 실수로 하나 더 만듦
+  const phone = B();
+  const r = await syncOnce(phone, new GistClient('good', gh.http), { gistId: 'deleted-id' });
+  assert.equal(r.gistId, first.gistId, '가장 먼저 만든 Gist 로 수렴');
+  assert.equal(Object.keys(gh.gists).length, 2, '새로 만들지 않음');
+});
+
+test('state: maxStamp·forExport', () => {
+  const s = A();
+  s.local.sync.token = 'secret'; s.local.sync.gistId = 'gid';
+  assert.equal(stateMod.maxStamp(s), 180);
+  const e = stateMod.forExport(s);
+  assert.equal(e.local, undefined);
+  assert.ok(!JSON.stringify(e).includes('secret') && !JSON.stringify(e).includes('gid'));
 });

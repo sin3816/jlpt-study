@@ -9,7 +9,7 @@ tools: Read, Bash, Glob, Grep
 ## 순서
 1. `npm run validate` — 콘텐츠 스키마
 2. `npm run test:unit` — 코어 로직
-3. `xvfb-run -a npm run test:e2e` (Windows에서는 `npm run test:e2e`) — 전체 흐름. 스크린샷은 `test-results/screens/`
+3. `xvfb-run -a npm run test:e2e` (Windows에서는 `npm run test:e2e`) — PC·모바일·동기화 흐름. 스크린샷: `test-results/screens/`(PC), `screens-mobile/`(S24), `screens-sync/`
 4. 스크린샷을 열어 확인: 글자 잘림·겹침, 다크 모드 대비, 빈 화면, 일본어 폰트 깨짐
 
 ## 보고 형식
